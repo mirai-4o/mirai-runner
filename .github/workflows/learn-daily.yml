@@ -8,6 +8,7 @@ jobs:
     runs-on: [self-hosted, Windows, X64]
     steps:
       - uses: actions/checkout@v4
+
       - name: Install Portable Python 3.10
         shell: powershell
         run: |
@@ -19,10 +20,12 @@ jobs:
           Expand-Archive -Path $zip -DestinationPath $dir -Force
           (Get-Content "$dir\python310._pth") -replace '#import site','import site' | Set-Content "$dir\python310._pth"
           "PY=$dir" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
       - name: Run training
         shell: powershell
         run: |
           & "$env:PY\python.exe" .\scripts\learn_task.py
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
