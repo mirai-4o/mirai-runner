@@ -1,40 +1,3 @@
-name: MIRAI OSS Sync
-on:
-  workflow_dispatch:
-  push:
-    branches: [main]
-  schedule:
-    - cron: '0 * * * *'   # 毎時
-jobs:
-  run:
-    runs-on: [self-hosted, Windows, X64]
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Portable Python 3.10
-        shell: powershell
-        run: |
-          $url = 'https://www.python.org/ftp/python/3.10.11/python-3.10.11-embed-amd64.zip'
-          $zip = "$env:RUNNER_TEMP\py.zip"
-          Invoke-WebRequest -Uri $url -OutFile $zip
-          $dir = "$env:RUNNER_TEMP\py310"
-          New-Item -ItemType Directory -Force -Path $dir | Out-Null
-          Expand-Archive -Path $zip -DestinationPath $dir -Force
-          (Get-Content "$dir\python310._pth") -replace '#import site','import site' | Set-Content "$dir\python310._pth"
-          "PY=$dir" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-
-      - name: Run OSS sync
-        shell: powershell
-        run: |
-          & "$env:PY\python.exe" .\scripts\oss_sync.py
-
-      - name: Upload logs
-        uses: actions/upload-artifact@v4
-        with:
-          name: oss-sync-logs
-          path: logs/
-          if-no-files-found: ignore
-
       - name: Notify (Discord or Slack)
         if: always()
         shell: powershell
@@ -42,16 +5,22 @@ jobs:
           WEBHOOK: ${{ secrets.NOTIFY_WEBHOOK }}
           STATUS: ${{ job.status }}
         run: |
-          $ok = $env:STATUS -eq 'success'
-          $title = if ($ok) { "✅ MIRAI OSS Sync 成功" } else { "❌ MIRAI OSS Sync 失敗" }
-          $text  = "$title`nrepo: $env:GITHUB_REPOSITORY`nrun: $env:GITHUB_RUN_NUMBER`nurl: $env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID"
+          $ok  = $env:STATUS -eq 'success'
+          $wf  = $env:GITHUB_WORKFLOW
+          $ttl = if ($ok) { "✅ $wf 成功" } else { "❌ $wf 失敗" }
 
-          # Discord（content）
+          $lines = @(
+            $ttl
+            "repo: $env:GITHUB_REPOSITORY"
+            "run : $env:GITHUB_RUN_NUMBER"
+            "url : $env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID"
+          )
+          $text = ($lines -join "`n")
+
           try {
-            $payload = @{ content = $text } | ConvertTo-Json -Depth 3
+            $payload = @{ content = $text } | ConvertTo-Json -Depth 3    # Discord
             Invoke-RestMethod -Uri $env:WEBHOOK -Method Post -ContentType 'application/json' -Body $payload -ErrorAction Stop
           } catch {
-            # Slack（text）
-            $payload = @{ text = $text } | ConvertTo-Json -Depth 3
+            $payload = @{ text = $text } | ConvertTo-Json -Depth 3       # Slack
             Invoke-RestMethod -Uri $env:WEBHOOK -Method Post -ContentType 'application/json' -Body $payload
           }
