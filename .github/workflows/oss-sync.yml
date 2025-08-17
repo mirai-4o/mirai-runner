@@ -1,0 +1,25 @@
+name: MIRAI OSS Sync
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 * * * *'   # 毎時
+jobs:
+  run:
+    runs-on: [self-hosted, Windows, X64]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Run OSS sync
+        shell: pwsh
+        run: python .\scripts\oss_sync.py
+      - name: Upload logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: oss-sync-logs
+          path: logs/
+          if-no-files-found: ignore

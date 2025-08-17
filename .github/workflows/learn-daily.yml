@@ -1,0 +1,23 @@
+name: MIRAI Learn Daily
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *'  # 世界時0時=日本時間9時
+jobs:
+  train:
+    runs-on: [self-hosted, Windows, X64]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Run training
+        shell: pwsh
+        run: python .\scripts\learn_task.py
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: learn-artifacts
+          path: artifacts/
+          if-no-files-found: ignore
