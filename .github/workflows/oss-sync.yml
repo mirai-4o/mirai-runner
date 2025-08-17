@@ -9,7 +9,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install Portable Python 3.10
-        shell: pwsh
+        shell: powershell
         run: |
           \ = 'https://www.python.org/ftp/python/3.10.11/python-3.10.11-embed-amd64.zip'
           \ = "\\py.zip"
@@ -18,9 +18,9 @@ jobs:
           New-Item -ItemType Directory -Force -Path \ | Out-Null
           Expand-Archive -Path \ -DestinationPath \ -Force
           (Get-Content "\\python310._pth") -replace '#import site','import site' | Set-Content "\\python310._pth"
-          Add-Content \ "PY=\"
+          "PY=\" | Out-File -FilePath \ -Append -Encoding utf8
       - name: Run OSS sync
-        shell: pwsh
+        shell: powershell
         run: |
           & "\\python.exe" .\scripts\oss_sync.py
       - name: Upload logs
