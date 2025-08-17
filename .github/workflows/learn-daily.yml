@@ -2,7 +2,7 @@ name: MIRAI Learn Daily
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 0 * * *'  # 世界時0時＝日本時間9時
+    - cron: '0 0 * * *'  # 世界時0時=日本時間9時
 jobs:
   train:
     runs-on: [self-hosted, Windows, X64]
@@ -32,3 +32,24 @@ jobs:
           name: learn-artifacts
           path: artifacts/
           if-no-files-found: ignore
+
+      - name: Notify (Discord or Slack)
+        if: always()
+        shell: powershell
+        env:
+          WEBHOOK: ${{ secrets.NOTIFY_WEBHOOK }}
+          STATUS: ${{ job.status }}
+        run: |
+          $ok = $env:STATUS -eq 'success'
+          $title = if ($ok) { "✅ MIRAI Learn Daily 成功" } else { "❌ MIRAI Learn Daily 失敗" }
+          $text  = "$title`nrepo: $env:GITHUB_REPOSITORY`nrun: $env:GITHUB_RUN_NUMBER`nurl: $env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID"
+
+          # Discord（content）
+          try {
+            $payload = @{ content = $text } | ConvertTo-Json -Depth 3
+            Invoke-RestMethod -Uri $env:WEBHOOK -Method Post -ContentType 'application/json' -Body $payload -ErrorAction Stop
+          } catch {
+            # Slack（text）
+            $payload = @{ text = $text } | ConvertTo-Json -Depth 3
+            Invoke-RestMethod -Uri $env:WEBHOOK -Method Post -ContentType 'application/json' -Body $payload
+          }
