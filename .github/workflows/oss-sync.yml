@@ -8,10 +8,21 @@ jobs:
     runs-on: [self-hosted, Windows, X64]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.10' }
+      - name: Install Portable Python 3.10
+        shell: pwsh
+        run: |
+          \ = 'https://www.python.org/ftp/python/3.10.11/python-3.10.11-embed-amd64.zip'
+          \ = "\\py.zip"
+          Invoke-WebRequest -Uri \ -OutFile \
+          \ = "\\py310"
+          New-Item -ItemType Directory -Force -Path \ | Out-Null
+          Expand-Archive -Path \ -DestinationPath \ -Force
+          (Get-Content "\\python310._pth") -replace '#import site','import site' | Set-Content "\\python310._pth"
+          Add-Content \ "PY=\"
       - name: Run OSS sync
         shell: pwsh
-        run: python .\scripts\oss_sync.py
-      - uses: actions/upload-artifact@v4
+        run: |
+          & "\\python.exe" .\scripts\oss_sync.py
+      - name: Upload logs
+        uses: actions/upload-artifact@v4
         with: { name: oss-sync-logs, path: logs/, if-no-files-found: ignore }
